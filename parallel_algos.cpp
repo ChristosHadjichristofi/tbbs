@@ -1,5 +1,6 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
+#include <oneapi/tbb/task_arena.h>
 #include <tbb/tbb.h>
 #include <chrono>
 
@@ -9,29 +10,46 @@ private:
     cv::Mat& outputImageGaussianBlur;
     cv::Mat& outputImageEdgeDetection;
     cv::Mat& outputImageGrayscale;
+    int num_threads;
 
 public:
-    ParallelImageProcessing(const cv::Mat& inputImage, cv::Mat& outputImageGaussianBlur, cv::Mat& outputImageEdgeDetection, cv::Mat& outputImageGrayscale)
-        : inputImage(inputImage), outputImageGaussianBlur(outputImageGaussianBlur), outputImageEdgeDetection(outputImageEdgeDetection), outputImageGrayscale(outputImageGrayscale) {}
+    ParallelImageProcessing(const cv::Mat& inputImage, cv::Mat& outputImageGaussianBlur, cv::Mat& outputImageEdgeDetection, cv::Mat& outputImageGrayscale, int num_threads)
+        : inputImage(inputImage), outputImageGaussianBlur(outputImageGaussianBlur), outputImageEdgeDetection(outputImageEdgeDetection), outputImageGrayscale(outputImageGrayscale), num_threads(num_threads) {}
 
     void applyAlgorithms() {
-        auto startGaussian = std::chrono::high_resolution_clock::now();
-        applyParallelGaussianBlur(1); // 1 uses a 3x3 kernel (since it includes -1, 0, +1)
-        auto endGaussian = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> durationGaussian = endGaussian - startGaussian;
-        std::cout << "Gaussian Blur Time: " << durationGaussian.count() << " seconds\n";
+        oneapi::tbb::task_arena arena(num_threads); // Create task arena with specified number of threads
 
-        auto startEdge = std::chrono::high_resolution_clock::now();
-        applyParallelEdgeDetection();
-        auto endEdge = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> durationEdge = endEdge - startEdge;
-        std::cout << "Edge Detection Time: " << durationEdge.count() << " seconds\n";
+        // Start timer for total time
+        auto total_start = std::chrono::high_resolution_clock::now();
+        
+        // Apply algorithms inside the task arena
+        arena.execute([&] {
+            // Start timer for Gaussian blur
+            auto gaussian_start = std::chrono::high_resolution_clock::now();
+            applyParallelGaussianBlur(1); // 1 uses a 3x3 kernel (since it includes -1, 0, +1)
+            auto gaussian_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> gaussian_duration = gaussian_end - gaussian_start;
+            std::cout << "Gaussian Blur Time: " << gaussian_duration.count() << " seconds\n";
 
-        auto startGrayscale = std::chrono::high_resolution_clock::now();
-        applyParallelGrayscaleConversion();
-        auto endGrayscale = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> durationGrayscale = endGrayscale - startGrayscale;
-        std::cout << "Grayscale Conversion Time: " << durationGrayscale.count() << " seconds\n";
+            // Start timer for edge detection
+            auto edge_start = std::chrono::high_resolution_clock::now();
+            applyParallelEdgeDetection();
+            auto edge_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> edge_duration = edge_end - edge_start;
+            std::cout << "Edge Detection Time: " << edge_duration.count() << " seconds\n";
+
+            // Start timer for grayscale conversion
+            auto grayscale_start = std::chrono::high_resolution_clock::now();
+            applyParallelGrayscaleConversion();
+            auto grayscale_end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> grayscale_duration = grayscale_end - grayscale_start;
+            std::cout << "Grayscale Conversion Time: " << grayscale_duration.count() << " seconds\n";
+        });
+
+        // End timer for total time
+        auto total_end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> total_duration = total_end - total_start;
+        std::cout << "Total Time: " << total_duration.count() << " seconds\n";
     }
 
 private:
@@ -57,7 +75,6 @@ private:
             tempImage.at<cv::Vec3b>(y, x) = applyGaussianKernelHorizontal(inputImage, x, y, kernelSize);
         }
     }
-
 
     cv::Vec3b applyGaussianKernelHorizontal(const cv::Mat& image, int x, int y, int kernelSize) const {
         cv::Vec3f sum(0, 0, 0);
@@ -155,9 +172,9 @@ private:
 };
 
 int main(int argc, char* argv[]) {
-    // Check if an image path is provided
-    if (argc != 2) {
-        std::cout << "Usage: " << argv[0] << " <image_path>" << std::endl;
+    // Check if an image path and number of threads are provided
+    if (argc != 3) {
+        std::cout << "Usage: " << argv[0] << " <image_path>" << " <number_of_threads>" << std::endl;
         return -1;
     }
 
@@ -168,23 +185,25 @@ int main(int argc, char* argv[]) {
         return -1;
     }
 
+    // Parse number of threads
+    const int num_threads = std::atoi(argv[2]);
+
+    // Validate number of threads
+    if (num_threads <= 0) {
+        std::cerr << "Invalid number of threads\n";
+        return 1;
+    }
+
     // Create output images for each algorithm
     cv::Mat outputImageGaussianBlur = inputImage.clone();
     cv::Mat outputImageEdgeDetection = inputImage.clone();
     cv::Mat outputImageGrayscale = inputImage.clone();
 
     // Create ParallelImageProcessing object
-    ParallelImageProcessing parallelImageProcessing(inputImage, outputImageGaussianBlur, outputImageEdgeDetection, outputImageGrayscale);
+    ParallelImageProcessing parallelImageProcessing(inputImage, outputImageGaussianBlur, outputImageEdgeDetection, outputImageGrayscale, num_threads);
 
     // Apply parallel algorithms
     parallelImageProcessing.applyAlgorithms();
-
-    // Display the original and processed images for each algorithm
-    cv::imshow("Original Image", inputImage);
-    cv::imshow("Gaussian Blur", outputImageGaussianBlur);
-    cv::imshow("Edge Detection", outputImageEdgeDetection);
-    cv::imshow("Grayscale Conversion", outputImageGrayscale);
-    cv::waitKey(0);
 
     return 0;
 }

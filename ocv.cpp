@@ -65,11 +65,11 @@ int main(int argc, char* argv[]) {
     opencvImageProcessing.applyAlgorithms();
 
     // Display the original and processed images for each algorithm
-    cv::imshow("Original Image", inputImage);
-    cv::imshow("OpenCV Gaussian Blur", outputImageGaussianBlur);
-    cv::imshow("OpenCV Edge Detection", outputImageEdgeDetection);
-    cv::imshow("OpenCV Grayscale Conversion", outputImageGrayscale);
-    cv::waitKey(0);
+    // cv::imshow("Original Image", inputImage);
+    // cv::imshow("OpenCV Gaussian Blur", outputImageGaussianBlur);
+    // cv::imshow("OpenCV Edge Detection", outputImageEdgeDetection);
+    // cv::imshow("OpenCV Grayscale Conversion", outputImageGrayscale);
+    // cv::waitKey(0);
 
     return 0;
 }

@@ -140,13 +140,13 @@ int main(int argc, char* argv[]) {
     imageProcessing.applyAlgorithms();
 
     // Display the original and processed images
-    cv::imshow("Original Image", inputImage);
-    cv::imshow("Gaussian Blur", outputImageGaussianBlur);
-    cv::imshow("Edge Detection", outputImageEdgeDetection);
-    cv::imshow("Grayscale Conversion", outputImageGrayscale);
+    // cv::imshow("Original Image", inputImage);
+    // cv::imshow("Gaussian Blur", outputImageGaussianBlur);
+    // cv::imshow("Edge Detection", outputImageEdgeDetection);
+    // cv::imshow("Grayscale Conversion", outputImageGrayscale);
 
     // Wait for a key press before exiting
-    cv::waitKey(0);
+    // cv::waitKey(0);
 
     return 0;
 }
